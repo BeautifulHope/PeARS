@@ -10,5 +10,7 @@ db = SQLAlchemy(app)
 from pears import models
 
 from pears.views import main
+from pears.views import api
 
 app.register_blueprint(main.mod)
+app.register_blueprint(api.mod)
