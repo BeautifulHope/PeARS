@@ -2,26 +2,41 @@
 Called by ./mkQueryPage.py
 """
 
-import os
+import os, requests, ipgetter
 import re
 import sys
 import urllib
 import webbrowser
 from operator import itemgetter
+from pears import db
+import socket
 
-from numpy import *
+import numpy
 
 import getUrlOverlap
 from .utils import query_distribution, cosine_similarity, print_timing
+from .models import Urls
+import cStringIO
 
 
-def scoreDS(query_dist, url_dict):
+def scoreDS(query_dist, pear_urls):
     """ Get distributional score """
     DS_scores = {}
-    for url, doc_dist in url_dict.items():
-        score = cosine_similarity(doc_dist, query_dist)
-        DS_scores[url] = score
-    return DS_scores
+    wordclouds = {}
+    for val in pear_urls:
+        url = val['url']
+        doc_dist = val['dists']
+        d = cStringIO.StringIO(str(doc_dist))
+        vector = numpy.loadtxt(d)
+        wordclouds[url] = val['wordclouds']
+        if vector.all():
+            score = cosine_similarity(vector, query_dist)
+            if score > 0.3:  # Doc must be good enough
+                DS_scores[url] = doc_dist
+        else:
+            Urls.query.filter_by(url=url).delete()
+            db.session.commit()
+    return DS_scores, wordclouds
 
 
 def scoreURL(query, url_dict):
@@ -30,39 +45,6 @@ def scoreURL(query, url_dict):
     for u in url_dict:
         URL_scores[u] = getUrlOverlap.runScript(query, u)
     return URL_scores
-
-
-def getUrlDict(pear):
-    """ Get URL-vector dict """
-    url_dict = {}
-    doc_dists = open(pear + "/urls.dists.txt")
-    for l in doc_dists:
-        l = l.rstrip('\n')
-        fields = l.split()
-        url = fields[0]
-        doc_dist = [float(i) for i in fields[1:]]
-        url_dict[url] = doc_dist
-    doc_dists.close()
-    return url_dict
-
-
-def loadWordClouds(pear):
-    """ Get word clouds for a pear """
-    print "Loading word clouds..."
-    url_wordclouds = {}
-    word_clouds = open(pear + "/wordclouds.txt")
-    for l in word_clouds:
-        l = l.rstrip('\n')
-        fields = l.split()
-        url = fields[0]
-        cloud = ""
-        for f in fields[1:]:
-            cloud += f + " "
-        cloud = cloud[:-1]
-        url_wordclouds[url] = cloud
-
-    word_clouds.close()
-    return url_wordclouds
 
 
 def scoreDocs(query, query_dist, url_dict):
@@ -89,12 +71,21 @@ def bestURLs(doc_scores):
     for w in sorted(doc_scores, key=doc_scores.get, reverse=True):
         if c < 50:
             best_urls.append(w)
-            print w, doc_scores[w]
             c += 1
         else:
             break
     return best_urls
 
+
+def ddg_redirect(query):
+    print "No suitable pages found."
+    duckquery = ""
+    for w in query.rstrip('\n').split():
+        duckquery = duckquery + w + "+"
+    webbrowser.open_new_tab(
+            "https://duckduckgo.com/?q=" +
+            duckquery.rstrip('+'))
+    return
 
 def output(best_urls, query, url_wordclouds):
     results = []
@@ -105,36 +96,33 @@ def output(best_urls, query, url_wordclouds):
 
     # Otherwise, open duckduckgo and send the query there
     else:
-        print "No suitable pages found."
-        duckquery = ""
-        for w in query.rstrip('\n').split():
-            duckquery = duckquery + w + "+"
-        webbrowser.open_new_tab(
-                "https://duckduckgo.com/?q=" +
-                duckquery.rstrip('+'))
-        link_snippet_pair = [
-            "###", "No suitable recommendation. You were redirected to duckduckgo."]
-        results.append(link_snippet_pair)
-
+        results = []
     return results
 
 
+def get_pear_urls(ip):
+    my_ip = ipgetter.myip()
+    # my_ip =  ([l for l in ([ip for ip in
+        # socket.gethostbyname_ex(socket.gethostname())[2] if not
+        # ip.startswith("127.")][:1], [[(s.connect(('8.8.8.8', 53)),
+            # s.getsockname()[0], s.close()) for s in
+            # [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]])
+        # if l][0][0])
+    if ip == my_ip:
+        urls = Urls.query.all()
+        return [u.__dict__ for u in urls]
+    else:
+        return requests.get("http://{}:5000/api/urls".format(ip)).text
+
 def runScript(query, query_dist, pears):
-    all_pears_doc_scores = {}  # Document scores
     all_url_wordclouds = {}
+    best_urls = []
     for pear in pears:
-        if pear.endswith('/'):
-            pear = pear[:-1]
-        wc = loadWordClouds(pear)
-        for k, v in wc.items():
-            all_url_wordclouds[k] = v
-        url_dict = getUrlDict(pear)
+        pear_urls = get_pear_urls(pear)
         # document_scores=scoreDocs(query, query_dist, url_dict):	#with URL overlap
-        document_scores = scoreDS(query_dist, url_dict)  # without URL overlap
-        for k, v in document_scores.items():
-            if v > 0.3:  # Doc must be good enough
-                all_pears_doc_scores[k] = v
-    best_urls = bestURLs(all_pears_doc_scores)
+        document_scores, wordclouds = scoreDS(query_dist, pear_urls)  # without URL overlap
+        all_url_wordclouds.update(wordclouds)
+        best_urls = bestURLs(document_scores)
     return output(best_urls, query, all_url_wordclouds)
 
 
