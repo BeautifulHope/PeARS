@@ -38,7 +38,7 @@ def index_browser_history():
     if user_in=="x":
             sys.exit()
 
-    retrieve_raw_data.runScript(num_pages)
+    retrieve_raw_data.runScript(num_pages,"./local-history/documents.txt")
 
 if __name__=="__main__":
     index_browser_history()
