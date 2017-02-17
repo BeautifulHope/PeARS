@@ -5,7 +5,7 @@ from Tkinter import *
 import Tkconstants, tkFileDialog
 from threading import Thread
 import os
-
+import subprocess
 
 class indexer_gui(Toplevel):
   def __init__(self,parent):
@@ -37,7 +37,7 @@ class indexer_gui(Toplevel):
     label2 = Label(self, image=self.index_file_img, border=0)
     label2.image = self.index_file_img
     label2.grid(row = 0, column = 3, columnspan=2, sticky=N)
-    
+
     urls_text = Message(self, text="Index pages from a .txt file, one url per line.", border=0, bg='#ffffff', fg='#000000')
     urls_text.grid(row = 0, column = 5, sticky=N)
 
@@ -81,6 +81,10 @@ class indexer_gui(Toplevel):
     index_file_button = tk.Button(self,image=self.index_button_img, command=self.OnFileButtonClick, bg='#ffffff',\
         fg='#000000', relief='ridge')
     index_file_button.grid(column=3,columnspan=3,row=2, sticky='N')
+ 
+    '''Define text box for logging'''  
+    self.logging = tk.Text(self, height=3)
+    self.logging.grid(column=0,row=5,columnspan=6,pady=(0, 10))
 
     #self.resizable(False,False)
     self.update()
@@ -88,28 +92,35 @@ class indexer_gui(Toplevel):
 
   def ThreadedHistoryIndexing(self):
     num_pages = self.entryNumVariable.get()
-    if self.chk_history.get() == 0:
-      print "Now indexing",num_pages,"without caching option"
-      os.system('python indexer.py --history '+num_pages)
+    if num_pages.isdigit():
+      if self.chk_history.get() == 0:
+        msg="Now indexing {} pages without caching option. This may take a few minutes...\n".format(num_pages)
+        self.logging.insert(tk.END,msg)
+        h=subprocess.Popen(["python", "indexer.py", "--history",num_pages],\
+            shell=False).wait()
+        self.logging.insert(tk.END,"Finished indexing. Thank you.")
+      else:
+        msg="Now indexing {} pages with caching option. This may take a few minutes...\n".format(num_pages)
+        self.logging.insert(tk.END,msg)
+        hc=subprocess.Popen(["python", "indexer.py",\
+          "--history",num_pages,"--cache"], shell=False).wait()
+        self.logging.insert(tk.END,"Finished indexing. Thank you.")
     else:
-      print "Now indexing",num_pages,"with caching option"
-      os.system('python indexer.py --history '+num_pages+' --cache')
+      self.entryNumVariable.set("Number of pages to index")
 
   def ThreadedFileIndexing(self):
     file_name = self.entryFileVariable.get()
     if self.chk_history.get() == 0:
-      print "Now indexing",file_name,"without caching option"
-      os.system('python indexer.py --file '+file_name)
+      self.logging.insert(tk.END,"Now indexing",file_name,"without caching option")
+      h=subprocess.Popen(["python", "indexer.py", "--file", file_name], shell=False).wait()
     else:
-      print "Now indexing",file_name,"with caching option"
-      os.system('python indexer.py --file '+file_name+' --cache')
+      self.logging.insert(tk.END,"Now indexing",file_name,"with caching option")
+      hc=subprocess.Popen(["python", "indexer.py", "--file", file_name, "--cache"], shell=False).wait()
 
   def OnHistoryButtonClick(self):
-    #self.search_button.config(state=DISABLED)
     Thread(target=self.ThreadedHistoryIndexing).start()
 
   def OnFileButtonClick(self):
-    #self.search_button.config(state=DISABLED)
     Thread(target=self.ThreadedFileIndexing).start()
 
   def OnSelectFileButtonClick(self):
@@ -130,43 +141,60 @@ class pears_gui(tk.Tk):
     self.parent = parent
     self.initialise()
 
+  def on_closing(self):
+    if self.search_process is not None:
+      print "Search running on pid...",self.search_process.pid, "Killing it..."
+      self.search_process.terminate()
+      print "Killing process on port 5000..."
+      subprocess.Popen(["fuser", "-k", "5000/tcp"], shell=False)
+    print "Goodbye!"
+    self.destroy()
+
   def initialise(self):
+    self.search_process=None
+    self.wm_protocol("WM_DELETE_WINDOW", self.on_closing)
     self.configure(bg = '#ffffff')
     self.grid()
-    self.logo = PhotoImage(file = './pears/static/gui-logo.gif')
-    self.index = PhotoImage(file = './pears/static/gui-index.gif')
-    self.search = PhotoImage(file = './pears/static/gui-search.gif')
+    self.logo = PhotoImage(file = './pears/static/gui-logo-main.gif')
+    self.index = PhotoImage(file = './pears/static/gui-write.gif')
+    self.search = PhotoImage(file = './pears/static/gui-network.gif')
 
-    label1 = Label(self, image=self.logo)
+    label1 = Label(self, image=self.logo, border=0)
     label1.image = self.logo
-    label1.grid(row = 0, column = 0, columnspan = 2, sticky=NW)
+    label1.grid(row = 0, column = 0, rowspan = 2, sticky=NW, padx=(7,0))
 
 
     index_button = tk.Button(self,image=self.index, command=self.OnIndexButtonClick, bg='#ffffff',\
-        fg='#000000', relief='ridge')
-    index_button.grid(column=0,row=1, sticky='N')
+        fg='#000000', relief='ridge', border=0)
+    index_button.grid(column=1,row=0, sticky='N', pady=(4,2), padx=(0,7))
 
     search_button = tk.Button(self,image=self.search, command=self.OnSearchButtonClick,\
-        bg='#ffffff', fg='#000000', relief='ridge')
-    search_button.grid(column=1,row=1, sticky='N')
+        fg='#000000', relief='ridge', border=0)
+    search_button.grid(column=1,row=1, sticky='N', pady=(2,4), padx=(0,7))
 
+
+    '''Define text box for logging'''
+    self.logging = tk.Text(self, height=3, width=60)
+    self.logging.grid(column=0,row=2,columnspan=2,pady=(0, 5))
+ 
     self.grid_columnconfigure(0,weight=1)
     self.resizable(False,False)
     self.update()
     self.geometry(self.geometry())
 
   def OnIndexButtonClick(self):
+    self.logging.insert(tk.END,"Opening the indexer...")
     indexer=indexer_gui(self)
     indexer.title('PeARS indexer')
 
   def ThreadedSearch(self):
-    os.system('python run.py')
+    msg="Opening search server. Please go to your browser and visit http://0.0.0.5000/."
+    self.logging.insert(tk.END,msg)
+    self.search_process=subprocess.Popen(["python", "run.py"], shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
   def OnSearchButtonClick(self):
-    #self.search_button.config(state=DISABLED)
     search_thread = Thread(target=self.ThreadedSearch)
     search_thread.setDaemon(True)
-    #search_thread = IndexThread()
     search_thread.start()
 
 if __name__ == "__main__":
