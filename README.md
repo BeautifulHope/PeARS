@@ -22,7 +22,7 @@ To know more head over to: <a href="http://aurelieherbelot.net/pears/">http://au
 
 ###Set up the development environment
 
-You can use script or the automatic installation instruc below. Automatic installation:
+You can use the install script or the automatic installation instructios below. Automatic installation:
 `$ python install.py`
 
 1. <b>Set up virtualenv</b>
@@ -64,6 +64,18 @@ You can use script or the automatic installation instruc below. Automatic instal
    then
 
    `python uncompress_db.py openvectors.dump.bz2`
+
+4. <b>Run the indexer</b>
+
+   In the root directory of the repo, run
+
+   `python indexer.py -h`
+
+   It will give instructions on how to index you browsing history.
+   The script automatically extracts your browsing history from Firefox.
+   If you use another browser, please fill a `urls.txt` text file with urls you want to index an run:
+
+   `python indexer.py --file=urls.txt`
 
 
 ###Running the PeARS search engine
