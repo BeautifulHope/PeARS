@@ -14,17 +14,18 @@ def extract_from_url(url, cache):
   drows = []
   try:
     try:
-      req = requests.get(unicode(url), allow_redirects=True, timeout=20)
-    except (requests.exceptions.SSLError or requests.exceptions.Timeout) as e:
-      #print "\nCaught the exception: {0}. Trying with http...\n".format(str(e))
-      url = unicode(url.replace("https", "http"))
-      req = requests.get(url, allow_redirects=True)
+      req = requests.get(unicode(url), allow_redirects=True, timeout=10)
     except requests.exceptions.RequestException as e:
-      #print "Ignoring {0} because of error {1}\n".format(url, str(e))
-      print "Ignoring {0} because of error...\n".format(url)
-      return
+      print "\nCaught the exception: {0}. Trying with http...\n".format(str(e))
+      try:
+        url = unicode(url.replace("https", "http"))
+        print "Attempting to index",url,"..."
+        req = requests.get(url, allow_redirects=True)
+      except:
+        print "Ignoring {0} because of error {1}\n".format(url, str(e))
+        return
     except requests.exceptions.HTTPError as err:
-      #print str(err)
+      print "ERROR",str(err)
       return
     req.encoding = 'utf-8'
     if req.status_code is not 200:
