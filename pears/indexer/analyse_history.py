@@ -75,23 +75,19 @@ def index_history():
 def write_analysis():
   f = open(root_dir+"/userdata/history_analysis.txt",'w')
   for d in sorted(domains, key=domains.get, reverse=True):
-    f.write(d+" "+str(domains[d])+"\n") 
+    f.write(d+" "+str(domains[d])+"\n")
   f.close()
 
 def update_pearsignore(ignore_list):
   recorded_domains = []
-  f = open(root_dir+"/userdata/.pearsignore",'r')
-  for d in f:
-    d = d.rstrip('\n')
-    recorded_domains.append(d)
-  f.close()
+  with open(root_dir+"/userdata/.pearsignore",'a+') as f:
+      for d in f:
+        d = d.rstrip('\n')
+        recorded_domains.append(d)
 
-  f = open(root_dir+"/userdata/.pearsignore",'a')
-  for d in ignore_list:
-    if d not in recorded_domains:
-      f.write(d+"\n") 
-  f.close()
-  
+      for d in ignore_list:
+        if d not in recorded_domains:
+          f.write(d+"\n")
 
 def runScript(*args):
   '''Run script, either by indexing part of history or by indexing the urls
