@@ -112,8 +112,7 @@ def query_distribution(query, entropies):
     vbase = normalise(vbase)
     return vbase
 
-def getIP():
-  my_ip = '0.0.0.0'
+def getIP(my_ip):
   try:
     my_ip = urllib2.urlopen('http://ip.42.pl/short', timeout = 2).read().strip('\n')
   except:
@@ -122,25 +121,27 @@ def getIP():
     #raise Exception("There was an error: %r" % e)
   return my_ip
 
-@print_timing
-def read_pears(pears):
+def get_local_profile():
     profile = Profile.query.first()
-    my_ip = "0.0.0.0"
-    my_ip = getIP()
-    pears_dict = {}
-    if not pears:
-        p = profile.vector
-        val = cStringIO.StringIO(str(p))
-        pears_dict[my_ip] = numpy.loadtxt(val)
-    else:
-        for ip in pears:
-            if ip == my_ip:
-                p = profile.vector
-            else:
-                p = requests.get("http://{}:5000/api/profile".format(ip)).text
-            val = cStringIO.StringIO(str(p))
-            pears_dict[ip] = numpy.loadtxt(val)
-    return pears_dict
+    if not profile:
+        print("No local profile found. Please do a local indexing to "\
+                        "continue.\n")
+        return ''
+    return profile.vector
+
+def create_numpy_array(p):
+    val = cStringIO.StringIO(str(p))
+    return numpy.loadtxt(val)
+
+@print_timing
+def read_pears(pears=[]):
+    my_ip = getIP('0.0.0.0')
+    pears_dict = dict({my_ip: get_local_profile()})
+    for ip in pears:
+        if ip != my_ip:
+            p = requests.get("http://{}:5000/api/profile".format(ip)).text
+            pears_dict[ip] = p
+    return {k:create_numpy_array(v) for k,v in pears_dict.iteritems() if v}
 
 
 def get_unknown_word(word):
