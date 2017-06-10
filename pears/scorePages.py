@@ -134,6 +134,7 @@ def runScript(query, query_dist, pears):
     url_titles = {}
     best_urls = []
     for pear in pears:
+        print pear
         pear_urls = get_pear_urls(pear)
         document_scores, wordclouds, titles = scoreDocs(query, query_dist, pear_urls)	#with URL overlap
         #document_scores, wordclouds = scoreDS(query_dist, pear_urls)  # without URL overlap

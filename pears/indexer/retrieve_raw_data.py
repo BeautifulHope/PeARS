@@ -4,25 +4,25 @@ import sys
 import csv
 import sqlite3
 import numpy as np
+from urlparse import urlparse, urljoin
 import htmlparser, pdfparser, xowa, runDistSemWeighted
 from pears.models import Urls,OpenVectors
 from pears import db
 
 drows = []
 home_directory = os.path.expanduser('~')
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 
 
-def mk_ignore():
-    #A small ignore list for sites that don't need indexing.
-    ignore=["twitter", "google", "duckduckgo", "bing", "yahoo", "facebook",
-            "mail.google.com", "whatsapp", "telegram", "0.0.0.5000",
-            "localhost"]
-    '''Make ignore list'''
-    s = []
-    for i in ignore:
-        s.append("www."+i)
-        s.append("://"+i)
-    return s
+def read_ignore():
+  #Read ignore list for sites that don't need indexing.
+  ignored_domains = []
+  f = open(root_dir+"/userdata/.pearsignore",'r')
+  for d in f:
+    d = d.rstrip('\n')
+    ignored_domains.append(d)
+  f.close()
+  return ignored_domains
 
 
 def get_firefox_history_db(in_dir):
@@ -42,15 +42,17 @@ def get_firefox_history_db(in_dir):
 def record_urls_to_process(db_urls, num_pages):
     '''Select and write urls that will be clustered.'''
     print "Now writing the",num_pages,"pages to process..."
-    ignore_list = mk_ignore()
+    ignore_list = read_ignore()
     urls_to_process = []
     i = 0
     for url_str in db_urls:
 
         url = unicode(url_str[1])
         if i < num_pages:
-            if not any( i in url for i in ignore_list):
-                if not url.startswith('http'):
+            url_parsed = urlparse(url)
+            netloc = url_parsed.netloc
+            if not any( i == netloc for i in ignore_list):
+                if not url.startswith('http') or '?' in url:
                     continue
                 url = url.replace('http://', 'https://').rstrip('/')
                 if url not in urls_to_process:
@@ -64,12 +66,13 @@ def record_urls_to_process(db_urls, num_pages):
                       urls_to_process.append(url)
                       #print "...writing",url,"to process..."
                       i+=1
-                    else:
-                      print url,"is already known..."
+                    #else:
+                    #  print url,"is already known..."
+            #else:
+            #  print url,"is in the ignore list..."
         else:
           print "Recorded",len(urls_to_process),"urls..."
           break
-
     return urls_to_process
 
 
@@ -103,14 +106,11 @@ def index_from_file(filename):
     www_url = xowa.local_to_www(url)
     if not db.session.query(Urls).filter_by(url=www_url).all():
       urls_to_process.append(url)
-      #print "...to process:",url,"..."
-    #else:
-      #print url,"is already known..."
   return urls_to_process
 
 def index_url(urls_to_process, cache):
     for url in urls_to_process:
-        print "\nAttempting to index '{}'".format(url)
+        print "Attempting to index '{}'".format(url)
         if ".pdf" in url:
           drows = pdfparser.extract_from_url(url,cache)
         else:
