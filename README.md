@@ -2,7 +2,7 @@
 
 **Important** If you are planning on trying out PeARS, head over to the development branch. The masters branch is by now very out-of-date, and the information below is too!
 
-##What is PeARS?
+## What is PeARS?
 
 PeARS (Peer-to-peer Agent for Reciprocated Search) is a lightweight, distributed search engine. It relies on people going about their normal business and browsing the web. While they do so, the pages they visit are indexed in the background, and assigned a ‘meaning’ (is this page about cats, fashion, ancient history, Python programming?, etc). From time to time, they can choose to share some or all of these meanings with others, providing the building stones of a giant search engine network, distributed across people.
 
@@ -12,17 +12,17 @@ Think of PeARS as a layer of virtual agents underlying a community of real peopl
 
 To know more head over to: <a href="http://aurelieherbelot.net/pears/">http://aurelieherbelot.net/pears/</a>
 
-##Set up
+## Set up
 >This is mostly a development setup since we not really production ready yet. You can find a demo of PeARS running over here: http://pearsearch.herokuapp.com/
 
-###Clone this repo
+### Clone this repo
 
 `git clone -b development git@github.com:PeARSearch/PeARS.git`
 
 `cd PeARS`
 
 
-###Set up the development environment
+### Set up the development environment
 
 1. <b>Set up virtualenv</b>
     >We recommend using virtualenv for the development. If you are just here for test it out, skip to the next section.
@@ -69,7 +69,7 @@ To know more head over to: <a href="http://aurelieherbelot.net/pears/">http://au
    `./uncompress_db wikiwoods.dump.bz2`
 
 
-###Running the PeARS search engine
+### Running the PeARS search engine
 
 
 In the root directory of the repo, run
@@ -81,11 +81,11 @@ Go to the browser and type localhost:5000. You should find PeARS running there.
 
 
 
-####That's it, folks!
+#### That's it, folks!
 
 Please [report](https://github.com/PeARSearch/PeARS/issues) to us any issues that you face.
 
 
-###More links:
+### More links:
 
 [Code Overview](https://github.com/PeARSearch/PeARS/wiki/Code-overview)
